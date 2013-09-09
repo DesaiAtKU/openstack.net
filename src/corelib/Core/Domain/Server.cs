@@ -1,36 +1,40 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-
 namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class Server : SimpleServer
     {
-        [DataMember(Name = "OS-DCF:diskConfig" )]
-        public string DiskConfig { get; internal set; }
+        [JsonProperty("status")]
+        private string _status;
 
-        [DataMember(Name = "OS-EXT-STS:power_state")]
-        public bool PowerState { get; internal set; }
+        [JsonProperty("OS-DCF:diskConfig" )]
+        public string DiskConfig { get; private set; }
 
-        [DataMember(Name = "OS-EXT-STS:task_state")]
-        public string TaskState { get; internal set; }
+        [JsonProperty("OS-EXT-STS:power_state")]
+        public bool PowerState { get; private set; }
 
-        [DataMember(Name = "OS-EXT-STS:vm_state")]
-        public string VMState { get; internal set; }
+        [JsonProperty("OS-EXT-STS:task_state")]
+        public string TaskState { get; private set; }
 
-        [DataMember]
-        public string AccessIPv4 { get; internal set; }
+        [JsonProperty("OS-EXT-STS:vm_state")]
+        public string VMState { get; private set; }
 
-        [DataMember]
-        public string AccessIPv6 { get; internal set; }
+        [JsonProperty]
+        public string AccessIPv4 { get; private set; }
 
-        [DataMember(Name = "user_id")]
-        public string UserId { get; internal set; }
+        [JsonProperty]
+        public string AccessIPv6 { get; private set; }
+
+        [JsonProperty("user_id")]
+        public string UserId { get; private set; }
 
         private SimpleServerImage _image;
-        [DataMember]
+        [JsonProperty]
         public SimpleServerImage Image 
         { 
             get {
@@ -42,35 +46,48 @@ namespace net.openstack.Core.Domain
 
                 return _image;
             }
-            internal set { _image = value;  }
+            private set { _image = value;  }
         }
 
-        [DataMember]
-        public string Status { get; internal set; }
+        public ServerState Status
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_status))
+                    return null;
 
-        [DataMember]
-        public Flavor Flavor { get; internal set; }
+                return ServerState.FromName(_status);
+            }
 
-        [DataMember]
-        public ServerAddresses Addresses { get; internal set; }
+            private set
+            {
+                if (value == null)
+                    _status = null;
 
-        [DataMember]
-        public DateTime Created { get; internal set; }
+                _status = value.Name;
+            }
+        }
 
-        [DataMember]
-        public string HostId { get; internal set; }
+        [JsonProperty]
+        public Flavor Flavor { get; private set; }
 
-        [DataMember]
-        public int Progress { get; internal set; }
+        [JsonProperty]
+        public ServerAddresses Addresses { get; private set; }
 
-        [DataMember(Name = "rax-bandwidth:bandwidth")]
-        public string[] Bandwidth { get; internal set; }
+        [JsonProperty]
+        public DateTime Created { get; private set; }
 
-        [DataMember(Name = "tenant_id")]
-        public string TenantId { get; internal set; }
+        [JsonProperty]
+        public string HostId { get; private set; }
 
-        [DataMember]
-        public DateTime Updated { get; internal set; }
+        [JsonProperty]
+        public int Progress { get; private set; }
+
+        [JsonProperty("tenant_id")]
+        public string TenantId { get; private set; }
+
+        [JsonProperty]
+        public DateTime Updated { get; private set; }
 
         protected override void UpdateThis(ServerBase server)
         {
@@ -95,7 +112,6 @@ namespace net.openstack.Core.Domain
             Created = details.Created;
             HostId = details.HostId;
             Progress = details.Progress;
-            Bandwidth = details.Bandwidth;
             TenantId = details.TenantId;
             Updated = details.Updated;
         }
@@ -109,27 +125,6 @@ namespace net.openstack.Core.Domain
         public IEnumerable<ServerVolume> GetVolumes()
         {
             return Provider.ListServerVolumes(Id, Region);
-        }
-
-        /// <summary>
-        /// Attaches the specified volume to the server.
-        /// </summary>
-        /// <param name="volumeId">The volume ID.</param>
-        /// <param name="storageDevice">The name of the device, such as /dev/xvdb. <remarks>If null, this value will be auto assigned</remarks></param>
-        /// <returns>The <see cref="ServerVolume"/> details.</returns>
-        public ServerVolume AttachVolume(string volumeId, string storageDevice = null)
-        {
-            return Provider.AttachServerVolume(Id, volumeId, storageDevice, Region);
-        }
-
-        /// <summary>
-        /// Detaches the specified volume from the server.
-        /// </summary>
-        /// <param name="volumeId">The volume ID.</param>
-        /// <returns><c>bool</c> indicating if the action was successful</returns>
-        public bool DetachVolume(string volumeId)
-        {
-            return Provider.DetachServerVolume(Id, volumeId, Region);
         }
 
         /// <summary>
@@ -230,13 +225,13 @@ namespace net.openstack.Core.Domain
         }
 
         /// <summary>
-        /// Lists of network addresses associated with the serverk.
+        /// Lists of network addresses associated with the server.
         /// </summary>
-        /// <param name="networkName">The network name.</param>
+        /// <param name="networkLabel">The network label.</param>
         /// <returns>List of network <see cref="AddressDetails"/></returns>
-        public IEnumerable<AddressDetails> ListAddressesByNetwork(string networkName)
+        public IEnumerable<IPAddress> ListAddressesByNetwork(string networkLabel)
         {
-            return Provider.ListAddressesByNetwork(Id, networkName, Region);
+            return Provider.ListAddressesByNetwork(Id, networkLabel, Region);
         }
 
         /// <summary>

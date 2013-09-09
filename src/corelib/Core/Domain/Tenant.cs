@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace net.openstack.Core.Domain
+﻿namespace net.openstack.Core.Domain
 {
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class Tenant
     {
-        public string Id { get; set; }
+        [JsonProperty("id")]
+        public string Id { get; private set; }
 
-        public string Name { get; set; }
+        [JsonProperty("name")]
+        public string Name { get; private set; }
     }
 }

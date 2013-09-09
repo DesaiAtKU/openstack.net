@@ -1,31 +1,50 @@
-using System;
-using System.Runtime.Serialization;
-
 namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    using System;
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class ServerImage : SimpleServerImage
     {
-        [DataMember(Name = "OS-DCF:diskConfig")]
-        public string DiskConfig { get; internal set; }
+        [JsonProperty("status")]
+        private string _status;
 
-        [DataMember]
-        public string Status { get; internal set; }
+        [JsonProperty("OS-DCF:diskConfig")]
+        public string DiskConfig { get; private set; }
 
-        [DataMember]
-        public DateTime Created { get; internal set; }
+        public ImageState Status
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_status))
+                    return null;
 
-        [DataMember]
-        public int Progress { get; internal set; }
+                return ImageState.FromName(_status);
+            }
 
-        [DataMember]
-        public DateTime Updated { get; internal set; }
+            private set
+            {
+                if (value == null)
+                    _status = null;
 
-        [DataMember]
-        public int MinDisk { get; internal set; }
+                _status = value.Name;
+            }
+        }
+
+        [JsonProperty]
+        public DateTime Created { get; private set; }
+
+        [JsonProperty]
+        public int Progress { get; private set; }
+
+        [JsonProperty]
+        public DateTime Updated { get; private set; }
+
+        [JsonProperty]
+        public int MinDisk { get; private set; }
 
         private SimpleServer _server;
-        [DataMember]
+        [JsonProperty]
         public SimpleServer Server { 
             get {
                 if (_server != null)
@@ -36,11 +55,11 @@ namespace net.openstack.Core.Domain
 
                 return _server;
             } 
-            internal set { _server = value; } 
+            private set { _server = value; } 
         }
 
-        [DataMember]
-        public int MinRAM { get; internal set; }
+        [JsonProperty]
+        public int MinRAM { get; private set; }
 
         protected override void UpdateThis(SimpleServerImage serverImage)
         {

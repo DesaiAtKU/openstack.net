@@ -1,17 +1,40 @@
-using System.Runtime.Serialization;
-
 namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    using System.Net;
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class VirtualInterfaceAddress
     {
-        [DataMember(Name = "address")]
-        public string Address { get; set; }
+        [JsonProperty("address")]
+        private string _address;
 
-        [DataMember(Name = "network_id")]
-        public string NetworkId { get; set; }
+        public IPAddress Address
+        {
+            get
+            {
+                if (_address == null)
+                    return null;
 
-        [DataMember(Name = "network_label")]
-        public string NetworkLabel { get; set; }
+                return IPAddress.Parse(_address);
+            }
+
+            private set
+            {
+                if (value == null)
+                {
+                    _address = null;
+                    return;
+                }
+
+                _address = value.ToString();
+            }
+        }
+
+        [JsonProperty("network_id")]
+        public string NetworkId { get; private set; }
+
+        [JsonProperty("network_label")]
+        public string NetworkLabel { get; private set; }
     }
 }

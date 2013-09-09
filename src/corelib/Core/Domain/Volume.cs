@@ -1,40 +1,51 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
-
-namespace net.openstack.Core.Domain
+﻿namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    using System;
+    using System.Collections.Generic;
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class Volume
     {
-        [DataMember]
-        public string Id { get; set; }
+        [JsonProperty("status")]
+        private string _status;
 
-        [DataMember(Name = "display_name")]
-        public string DisplayName { get; set; }
+        [JsonProperty("id")]
+        public string Id { get; private set; }
 
-        [DataMember(Name = "display_description")]
-        public string DisplayDescription { get; set; }
+        [JsonProperty("display_name")]
+        public string DisplayName { get; private set; }
 
-        [DataMember]
-        public int Size { get; set; }
+        [JsonProperty("display_description")]
+        public string DisplayDescription { get; private set; }
 
-        [DataMember(Name = "volume_type")]
-        public string VolumeType { get; set; }
+        [JsonProperty("size")]
+        public int Size { get; private set; }
 
-        [DataMember(Name = "snapshot_id")]
-        public string SnapshotId { get; set; }
+        [JsonProperty("volume_type")]
+        public string VolumeType { get; private set; }
 
-        [DataMember]
-        public Dictionary<string, string>[] Attachments { get; set; }
+        [JsonProperty("snapshot_id")]
+        public string SnapshotId { get; private set; }
 
-        [DataMember]
-        public string Status { get; set; }
+        [JsonProperty("attachments")]
+        public Dictionary<string, string>[] Attachments { get; private set; }
 
-        [DataMember(Name = "availability_zone")]
-        public string AvailabilityZone { get; set; }
+        public VolumeState Status
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_status))
+                    return null;
 
-        [DataMember(Name = "created_at")]
-        public DateTime CreatedAt { get; set; }
+                return VolumeState.FromName(_status);
+            }
+        }
+
+        [JsonProperty("availability_zone")]
+        public string AvailabilityZone { get; private set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; private set; }
     }
 }

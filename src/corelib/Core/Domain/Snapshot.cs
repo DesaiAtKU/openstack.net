@@ -1,30 +1,41 @@
-﻿using System;
-using System.Runtime.Serialization;
-
-namespace net.openstack.Core.Domain
+﻿namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    using System;
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class Snapshot
     {
-        [DataMember]
-        public string Id { get; set; }
+        [JsonProperty("status")]
+        private string _status;
 
-        [DataMember(Name = "display_name")]
-        public string DisplayName { get; set; }
+        [JsonProperty]
+        public string Id { get; private set; }
 
-        [DataMember(Name = "display_description")]
-        public string DisplayDescription { get; set; }
+        [JsonProperty("display_name")]
+        public string DisplayName { get; private set; }
 
-        [DataMember(Name = "volume_id")]
-        public string VolumeId { get; set; }
+        [JsonProperty("display_description")]
+        public string DisplayDescription { get; private set; }
 
-        [DataMember]
-        public string Status { get; set; }
+        [JsonProperty("volume_id")]
+        public string VolumeId { get; private set; }
 
-        [DataMember]
-        public string Size { get; set; }
+        public SnapshotState Status
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_status))
+                    return null;
 
-        [DataMember(Name = "created_at")]
-        public DateTime CreatedAt { get; set; }
+                return SnapshotState.FromName(_status);
+            }
+        }
+
+        [JsonProperty]
+        public string Size { get; private set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; private set; }
     }
 }

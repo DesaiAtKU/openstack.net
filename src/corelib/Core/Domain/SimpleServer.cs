@@ -1,11 +1,12 @@
-using System.Runtime.Serialization;
-
 namespace net.openstack.Core.Domain
 {
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class SimpleServer : ServerBase
     {
-        [DataMember]
-        public string Name { get; internal set; }
+        [JsonProperty]
+        public string Name { get; private set; }
 
         protected override void UpdateThis(ServerBase server)
         {

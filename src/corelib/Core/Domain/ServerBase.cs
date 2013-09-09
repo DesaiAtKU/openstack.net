@@ -1,18 +1,19 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
+using System.Net;
 using net.openstack.Core.Providers;
+using Newtonsoft.Json;
 
 namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    [JsonObject(MemberSerialization.OptIn)]
     public abstract class ServerBase : ProviderStateBase<IComputeProvider>
     {
-        [DataMember]
-        public string Id { get; internal set; }
+        [JsonProperty]
+        public string Id { get; private set; }
 
-        [DataMember]
-        public Link[] Links { get; internal set; }
+        [JsonProperty]
+        public Link[] Links { get; private set; }
 
         protected virtual void UpdateThis(ServerBase server)
         {
@@ -54,7 +55,7 @@ namespace net.openstack.Core.Domain
         /// <param name="refreshCount">Number of times to check the server status</param>
         /// <param name="refreshDelay">The time to wait each time before requesting the status for the server. If this value is <c>null</c>, the default is 2.4 seconds.</param>
         /// <param name="progressUpdatedCallback">A callback delegate to execute each time the <see cref="SimpleServer"/>s Progress value increases.</param>
-        public void WaitForState(string expectedState, string[] errorStates, int refreshCount = 600, TimeSpan? refreshDelay = null, Action<int> progressUpdatedCallback = null)
+        public void WaitForState(ServerState expectedState, ServerState[] errorStates, int refreshCount = 600, TimeSpan? refreshDelay = null, Action<int> progressUpdatedCallback = null)
         {
             var details = Provider.WaitForServerState(Id, expectedState, errorStates, refreshCount, refreshDelay ?? TimeSpan.FromMilliseconds(2400), progressUpdatedCallback, Region);
             UpdateThis(details);
@@ -68,7 +69,7 @@ namespace net.openstack.Core.Domain
         /// <param name="refreshCount">Number of times to check the server status</param>
         /// <param name="refreshDelay">The time to wait each time before requesting the status for the server. If this value is <c>null</c>, the default is 2.4 seconds.</param>
         /// <param name="progressUpdatedCallback">A callback delegate to execute each time the <see cref="SimpleServer"/>s Progress value increases.</param>
-        public void WaitForState(string[] expectedStates, string[] errorStates, int refreshCount = 600, TimeSpan? refreshDelay = null, Action<int> progressUpdatedCallback = null)
+        public void WaitForState(ServerState[] expectedStates, ServerState[] errorStates, int refreshCount = 600, TimeSpan? refreshDelay = null, Action<int> progressUpdatedCallback = null)
         {
             var details = Provider.WaitForServerState(Id, expectedStates, errorStates, refreshCount, refreshDelay ?? TimeSpan.FromMilliseconds(2400), progressUpdatedCallback, Region);
             UpdateThis(details);
@@ -80,7 +81,7 @@ namespace net.openstack.Core.Domain
         /// <returns><c>bool</c> indicating if the action was successful</returns>
         public bool SoftReboot()
         {
-            return Provider.RebootServer(Id, RebootType.SOFT, Region);
+            return Provider.RebootServer(Id, RebootType.Soft, Region);
         }
 
         /// <summary>
@@ -89,7 +90,7 @@ namespace net.openstack.Core.Domain
         /// <returns><c>bool</c> indicating if the action was successful</returns>
         public bool HardReboot()
         {
-            return Provider.RebootServer(Id, RebootType.HARD, Region);
+            return Provider.RebootServer(Id, RebootType.Hard, Region);
         }
 
         /// <summary>
@@ -103,9 +104,9 @@ namespace net.openstack.Core.Domain
         /// <param name="accessIPv6">The new access IP v6 address for the server. </param>
         /// <param name="metadata">The list of any metadata to associate with the server. </param>
         /// <param name="diskConfig">The disk configuration value. <remarks>Available values are [AUTO, MANUAL]</remarks></param>
-        /// <param name="personality">The file path and file contents. </param>
+        /// <param name="personality">The path and contents of a file to inject in the target file system during the rebuild operation. If the value is <c>null</c>, no file is injected.</param>
         /// <returns><c>bool</c> indicating if the action was successful</returns>
-        public bool Rebuild(string name, string imageId, string flavor, string adminPassword, string accessIPv4 = null, string accessIPv6 = null, Metadata metadata = null, string diskConfig = null, Personality personality = null)
+        public bool Rebuild(string name, string imageId, string flavor, string adminPassword, IPAddress accessIPv4 = null, IPAddress accessIPv6 = null, Metadata metadata = null, DiskConfiguration? diskConfig = null, Personality personality = null)
         {
             var details = Provider.RebuildServer(Id, name, imageId, flavor, adminPassword, accessIPv4, accessIPv6, metadata, diskConfig, personality, Region);
 
@@ -124,7 +125,7 @@ namespace net.openstack.Core.Domain
         /// <param name="flavor">The new flavor.</param>
         /// <param name="diskConfig">The disk configuration value. <remarks>Available values are {AUTO|MANUAL}</remarks></param>
         /// <returns><c>bool</c> indicating if the action was successful</returns>
-        public bool Resize(string name, string flavor, string diskConfig = null)
+        public bool Resize(string name, string flavor, DiskConfiguration? diskConfig = null)
         {
             return Provider.ResizeServer(Id, name, flavor, diskConfig, Region);
         }
@@ -186,7 +187,7 @@ namespace net.openstack.Core.Domain
         }
 
         /// <summary>
-        /// Lists all volumes attached to ther server.
+        /// Lists all volumes attached to their server.
         /// </summary>
         /// <returns>a list of <see cref="ServerVolume"/>s</returns>
         public IEnumerable<ServerVolume> ListVolumes()

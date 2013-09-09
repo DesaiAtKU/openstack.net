@@ -72,7 +72,7 @@ namespace Net.OpenStack.Testing.Integration.Providers.Rackspace
         {
             var provider = new CloudBlockStorageProvider();
             var volumeCreatedResponse = provider.CreateVolume(100, identity: _testIdentity);
-            Assert.IsTrue(volumeCreatedResponse);
+            Assert.IsNotNull(volumeCreatedResponse);
         }
 
         [TestMethod]
@@ -80,7 +80,7 @@ namespace Net.OpenStack.Testing.Integration.Providers.Rackspace
         {
             var provider = new CloudBlockStorageProvider();
             var volumeCreatedResponse = provider.CreateVolume(100, volumeDisplayDescription, volumeDisplayName, null, "SATA", null, _testIdentity);
-            Assert.IsTrue(volumeCreatedResponse);
+            Assert.IsNotNull(volumeCreatedResponse);
 
 
         }
@@ -100,7 +100,7 @@ namespace Net.OpenStack.Testing.Integration.Providers.Rackspace
 
                 var volumeDetails = provider.WaitForVolumeAvailable(testVolume.Id, identity: _testIdentity);
                 Assert.IsNotNull(volumeDetails);
-                Assert.AreEqual(VolumeState.AVAILABLE, volumeDetails.Status, true);
+                Assert.AreEqual(VolumeState.Available, volumeDetails.Status);
 
             }
             else
@@ -187,7 +187,7 @@ namespace Net.OpenStack.Testing.Integration.Providers.Rackspace
                 }
 
                 var snapshotCreatedResponse = provider.CreateSnapshot(testVolume.Id, identity: _testIdentity);
-                Assert.IsTrue(snapshotCreatedResponse);
+                Assert.IsNotNull(snapshotCreatedResponse);
             }
             else
             {
@@ -211,7 +211,7 @@ namespace Net.OpenStack.Testing.Integration.Providers.Rackspace
                 var snapshotCreatedResponse = provider.CreateSnapshot(testVolume.Id, true, snapshotDisplayName,
                                                                       snapshotDisplayDescription,
                                                                       identity: _testIdentity);
-                Assert.IsTrue(snapshotCreatedResponse);
+                Assert.IsNotNull(snapshotCreatedResponse);
             }
             else
             {
@@ -235,7 +235,7 @@ namespace Net.OpenStack.Testing.Integration.Providers.Rackspace
 
                 var snapshotDetails = provider.WaitForSnapshotAvailable(testSnapshot.Id, identity: _testIdentity);
                 Assert.IsNotNull(snapshotDetails);
-                Assert.AreEqual(SnapshotState.AVAILABLE, snapshotDetails.Status, true);
+                Assert.AreEqual(SnapshotState.Available, snapshotDetails.Status);
 
             }
             else

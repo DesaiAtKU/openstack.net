@@ -12,7 +12,6 @@ using net.openstack.Core.Validators;
 using net.openstack.Providers.Rackspace.Objects.Request;
 using net.openstack.Providers.Rackspace.Objects.Response;
 using net.openstack.Providers.Rackspace.Validators;
-using CreateCloudBlockStorageVolumeDetails = net.openstack.Providers.Rackspace.Objects.Request.CreateCloudBlockStorageVolumeDetails;
 
 namespace net.openstack.Providers.Rackspace
 {
@@ -105,20 +104,29 @@ namespace net.openstack.Providers.Rackspace
         #region Volumes
 
         /// <inheritdoc />
-        public bool CreateVolume(int size, string displayDescription = null, string displayName = null, string snapshotId = null, string volumeType = null, string region = null, CloudIdentity identity = null)
+        public Volume CreateVolume(int size, string displayDescription = null, string displayName = null, string snapshotId = null, string volumeType = null, string region = null, CloudIdentity identity = null)
         {
+            if (size < 0)
+                throw new ArgumentOutOfRangeException("size");
+            CheckIdentity(identity);
+
             _cloudBlockStorageValidator.ValidateVolumeSize(size);
 
             var urlPath = new Uri(string.Format("{0}/volumes", GetServiceEndpoint(identity, region)));
-            var requestBody = new CreateCloudBlockStorageVolumeRequest { CreateCloudBlockStorageVolumeDetails = new CreateCloudBlockStorageVolumeDetails { Size = size, DisplayDescription = displayDescription, DisplayName = displayName, SnapshotId = snapshotId, VolumeType = volumeType } };
-            var response = ExecuteRESTRequest(identity, urlPath, HttpMethod.POST, requestBody);
+            var requestBody = new CreateCloudBlockStorageVolumeRequest(new CreateCloudBlockStorageVolumeDetails(size, displayDescription, displayName, snapshotId, volumeType));
+            var response = ExecuteRESTRequest<GetCloudBlockStorageVolumeResponse>(identity, urlPath, HttpMethod.POST, requestBody);
 
-            return response != null && _validResponseCode.Contains(response.StatusCode);
+            if (response == null || response.Data == null)
+                return null;
+
+            return response.Data.Volume;
         }
 
         /// <inheritdoc />
         public IEnumerable<Volume> ListVolumes(string region = null, CloudIdentity identity = null)
         {
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/volumes", GetServiceEndpoint(identity, region)));
             var response = ExecuteRESTRequest<ListVolumeResponse>(identity, urlPath, HttpMethod.GET);
 
@@ -131,6 +139,12 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public Volume ShowVolume(string volumeId, string region = null, CloudIdentity identity = null)
         {
+            if (volumeId == null)
+                throw new ArgumentNullException("volumeId");
+            if (string.IsNullOrEmpty(volumeId))
+                throw new ArgumentException("volumeId cannot be empty");
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/volumes/{1}", GetServiceEndpoint(identity, region), volumeId));
             var response = ExecuteRESTRequest<GetCloudBlockStorageVolumeResponse>(identity, urlPath, HttpMethod.GET);
 
@@ -143,6 +157,12 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public bool DeleteVolume(string volumeId, string region = null, CloudIdentity identity = null)
         {
+            if (volumeId == null)
+                throw new ArgumentNullException("volumeId");
+            if (string.IsNullOrEmpty(volumeId))
+                throw new ArgumentException("volumeId cannot be empty");
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/volumes/{1}", GetServiceEndpoint(identity, region), volumeId));
             var response = ExecuteRESTRequest(identity, urlPath, HttpMethod.DELETE);
 
@@ -152,6 +172,8 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public IEnumerable<VolumeType> ListVolumeTypes(string region = null, CloudIdentity identity = null)
         {
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/types", GetServiceEndpoint(identity, region)));
             var response = ExecuteRESTRequest<ListVolumeTypeResponse>(identity, urlPath, HttpMethod.GET);
 
@@ -162,8 +184,10 @@ namespace net.openstack.Providers.Rackspace
         }
 
         /// <inheritdoc />
-        public VolumeType DescribeVolumeType(int volumeTypeId, string region = null, CloudIdentity identity = null)
+        public VolumeType DescribeVolumeType(string volumeTypeId, string region = null, CloudIdentity identity = null)
         {
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/types/{1}", GetServiceEndpoint(identity, region), volumeTypeId));
             var response = ExecuteRESTRequest<GetCloudBlockStorageVolumeTypeResponse>(identity, urlPath, HttpMethod.GET);
 
@@ -176,22 +200,56 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public Volume WaitForVolumeAvailable(string volumeId, int refreshCount = 600, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
         {
-            return WaitForVolumeState(volumeId, VolumeState.AVAILABLE, new[] { VolumeState.ERROR, VolumeState.ERROR_DELETING }, refreshCount, refreshDelay ?? TimeSpan.FromMilliseconds(2400), region, identity);
+            if (volumeId == null)
+                throw new ArgumentNullException("volumeId");
+            if (string.IsNullOrEmpty(volumeId))
+                throw new ArgumentException("volumeId cannot be empty");
+            if (refreshCount < 0)
+                throw new ArgumentOutOfRangeException("refreshCount");
+            if (refreshDelay < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException("refreshDelay");
+            CheckIdentity(identity);
+
+            return WaitForVolumeState(volumeId, VolumeState.Available, new[] { VolumeState.Error, VolumeState.ErrorDeleting }, refreshCount, refreshDelay ?? TimeSpan.FromMilliseconds(2400), region, identity);
         }
 
         /// <inheritdoc />
         public bool WaitForVolumeDeleted(string volumeId, int refreshCount = 360, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
         {
+            if (volumeId == null)
+                throw new ArgumentNullException("volumeId");
+            if (string.IsNullOrEmpty(volumeId))
+                throw new ArgumentException("volumeId cannot be empty");
+            if (refreshCount < 0)
+                throw new ArgumentOutOfRangeException("refreshCount");
+            if (refreshDelay < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException("refreshDelay");
+            CheckIdentity(identity);
+
             return WaitForItemToBeDeleted(ShowVolume, volumeId, refreshCount, refreshDelay ?? TimeSpan.FromSeconds(10), region, identity);
         }
 
         /// <inheritdoc />
-        public Volume WaitForVolumeState(string volumeId, string expectedState, string[] errorStates, int refreshCount = 600, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
+        public Volume WaitForVolumeState(string volumeId, VolumeState expectedState, VolumeState[] errorStates, int refreshCount = 600, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
         {
+            if (volumeId == null)
+                throw new ArgumentNullException("volumeId");
+            if (expectedState == null)
+                throw new ArgumentNullException("expectedState");
+            if (errorStates == null)
+                throw new ArgumentNullException("errorStates");
+            if (string.IsNullOrEmpty(volumeId))
+                throw new ArgumentException("volumeId cannot be empty");
+            if (refreshCount < 0)
+                throw new ArgumentOutOfRangeException("refreshCount");
+            if (refreshDelay < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException("refreshDelay");
+            CheckIdentity(identity);
+
             var volumeInfo = ShowVolume(volumeId, region, identity);
 
             var count = 0;
-            while (!volumeInfo.Status.Equals(expectedState, StringComparison.OrdinalIgnoreCase) && !errorStates.Contains(volumeInfo.Status) && count < refreshCount)
+            while (!volumeInfo.Status.Equals(expectedState) && !errorStates.Contains(volumeInfo.Status) && count < refreshCount)
             {
                 Thread.Sleep(refreshDelay ?? TimeSpan.FromMilliseconds(2400));
                 volumeInfo = ShowVolume(volumeId, region, identity);
@@ -207,9 +265,9 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public class VolumeEnteredErrorStateException : Exception
         {
-            public string Status { get; private set; }
+            public VolumeState Status { get; private set; }
 
-            public VolumeEnteredErrorStateException(string status)
+            public VolumeEnteredErrorStateException(VolumeState status)
                 : base(string.Format("The volume entered an error state: '{0}'", status))
             {
                 Status = status;
@@ -221,18 +279,28 @@ namespace net.openstack.Providers.Rackspace
         #region Snapshots
 
         /// <inheritdoc />
-        public bool CreateSnapshot(string volumeId, bool force = false, string displayName = "None", string displayDescription = "None", string region = null, CloudIdentity identity = null)
+        public Snapshot CreateSnapshot(string volumeId, bool force = false, string displayName = "None", string displayDescription = "None", string region = null, CloudIdentity identity = null)
         {
-            var urlPath = new Uri(string.Format("{0}/snapshots", GetServiceEndpoint(identity, region)));
-            var requestBody = new CreateCloudBlockStorageSnapshotRequest { CreateCloudBlockStorageSnapshotDetails = new CreateCloudBlockStorageSnapshotDetails { VolumeId = volumeId, Force = force, DisplayName = displayName, DisplayDescription = displayDescription } };
-            var response = ExecuteRESTRequest(identity, urlPath, HttpMethod.POST, requestBody);
+            if (volumeId == null)
+                throw new ArgumentNullException("volumeId");
+            if (string.IsNullOrEmpty(volumeId))
+                throw new ArgumentException("volumeId cannot be empty");
+            CheckIdentity(identity);
 
-            return response != null && _validResponseCode.Contains(response.StatusCode);
+            var urlPath = new Uri(string.Format("{0}/snapshots", GetServiceEndpoint(identity, region)));
+            var requestBody = new CreateCloudBlockStorageSnapshotRequest(new CreateCloudBlockStorageSnapshotDetails(volumeId, force, displayName, displayDescription));
+            var response = ExecuteRESTRequest<GetCloudBlockStorageSnapshotResponse>(identity, urlPath, HttpMethod.POST, requestBody);
+            if (response == null || response.Data == null)
+                return null;
+
+            return response.Data.Snapshot;
         }
 
         /// <inheritdoc />
         public IEnumerable<Snapshot> ListSnapshots(string region = null, CloudIdentity identity = null)
         {
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/snapshots", GetServiceEndpoint(identity, region)));
             var response = ExecuteRESTRequest<ListSnapshotResponse>(identity, urlPath, HttpMethod.GET);
 
@@ -245,6 +313,12 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public Snapshot ShowSnapshot(string snapshotId, string region = null, CloudIdentity identity = null)
         {
+            if (snapshotId == null)
+                throw new ArgumentNullException("snapshotId");
+            if (string.IsNullOrEmpty(snapshotId))
+                throw new ArgumentException("snapshotId cannot be empty");
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/snapshots/{1}", GetServiceEndpoint(identity, region), snapshotId));
             var response = ExecuteRESTRequest<GetCloudBlockStorageSnapshotResponse>(identity, urlPath, HttpMethod.GET);
 
@@ -257,6 +331,12 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public bool DeleteSnapshot(string snapshotId, string region = null, CloudIdentity identity = null)
         {
+            if (snapshotId == null)
+                throw new ArgumentNullException("snapshotId");
+            if (string.IsNullOrEmpty(snapshotId))
+                throw new ArgumentException("snapshotId cannot be empty");
+            CheckIdentity(identity);
+
             var urlPath = new Uri(string.Format("{0}/snapshots/{1}", GetServiceEndpoint(identity, region), snapshotId));
             var response = ExecuteRESTRequest(identity, urlPath, HttpMethod.DELETE);
 
@@ -266,22 +346,56 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public Snapshot WaitForSnapshotAvailable(string snapshotId, int refreshCount = 360, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
         {
-            return WaitForSnapshotState(snapshotId, SnapshotState.AVAILABLE, new[] { SnapshotState.ERROR, SnapshotState.ERROR_DELETING }, refreshCount, refreshDelay ?? TimeSpan.FromSeconds(10), region, identity);
+            if (snapshotId == null)
+                throw new ArgumentNullException("snapshotId");
+            if (string.IsNullOrEmpty(snapshotId))
+                throw new ArgumentException("snapshotId cannot be empty");
+            if (refreshCount < 0)
+                throw new ArgumentOutOfRangeException("refreshCount");
+            if (refreshDelay < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException("refreshDelay");
+            CheckIdentity(identity);
+
+            return WaitForSnapshotState(snapshotId, SnapshotState.Available, new[] { SnapshotState.Error, SnapshotState.ErrorDeleting }, refreshCount, refreshDelay ?? TimeSpan.FromSeconds(10), region, identity);
         }
 
         /// <inheritdoc />
         public bool WaitForSnapshotDeleted(string snapshotId, int refreshCount = 180, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
         {
+            if (snapshotId == null)
+                throw new ArgumentNullException("snapshotId");
+            if (string.IsNullOrEmpty(snapshotId))
+                throw new ArgumentException("snapshotId cannot be empty");
+            if (refreshCount < 0)
+                throw new ArgumentOutOfRangeException("refreshCount");
+            if (refreshDelay < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException("refreshDelay");
+            CheckIdentity(identity);
+
             return WaitForItemToBeDeleted(ShowSnapshot, snapshotId, refreshCount, refreshDelay ?? TimeSpan.FromSeconds(10), region, identity);
         }
 
         /// <inheritdoc />
-        public Snapshot WaitForSnapshotState(string snapshotId, string expectedState, string[] errorStates, int refreshCount = 60, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
+        public Snapshot WaitForSnapshotState(string snapshotId, SnapshotState expectedState, SnapshotState[] errorStates, int refreshCount = 60, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)
         {
+            if (snapshotId == null)
+                throw new ArgumentNullException("snapshotId");
+            if (expectedState == null)
+                throw new ArgumentNullException("expectedState");
+            if (errorStates == null)
+                throw new ArgumentNullException("errorStates");
+            if (string.IsNullOrEmpty(snapshotId))
+                throw new ArgumentException("snapshotId cannot be empty");
+            if (refreshCount < 0)
+                throw new ArgumentOutOfRangeException("refreshCount");
+            if (refreshDelay < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException("refreshDelay");
+            CheckIdentity(identity);
+
             var snapshotInfo = ShowSnapshot(snapshotId, region, identity);
 
             var count = 0;
-            while (!snapshotInfo.Status.Equals(expectedState, StringComparison.OrdinalIgnoreCase) && !errorStates.Contains(snapshotInfo.Status) && count < refreshCount)
+            while (!snapshotInfo.Status.Equals(expectedState) && !errorStates.Contains(snapshotInfo.Status) && count < refreshCount)
             {
                 Thread.Sleep(refreshDelay ?? TimeSpan.FromSeconds(10));
                 snapshotInfo = ShowSnapshot(snapshotId, region, identity);
@@ -297,9 +411,9 @@ namespace net.openstack.Providers.Rackspace
         /// <inheritdoc />
         public class SnapshotEnteredErrorStateException : Exception
         {
-            public string Status { get; private set; }
+            public SnapshotState Status { get; private set; }
 
-            public SnapshotEnteredErrorStateException(string status)
+            public SnapshotEnteredErrorStateException(SnapshotState status)
                 : base(string.Format("The snapshot entered an error state: '{0}'", status))
             {
                 Status = status;
@@ -312,7 +426,7 @@ namespace net.openstack.Providers.Rackspace
 
         protected string GetServiceEndpoint(CloudIdentity identity = null, string region = null)
         {
-            return base.GetPublicServiceEndpoint(identity, "cloudBlockStorage", region);
+            return base.GetPublicServiceEndpoint(identity, "volume", region);
         }
 
         private bool WaitForItemToBeDeleted<T>(Func<string, string, CloudIdentity, T> retrieveItemMethod, string id, int refreshCount = 360, TimeSpan? refreshDelay = null, string region = null, CloudIdentity identity = null)

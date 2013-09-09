@@ -8,17 +8,16 @@ namespace net.openstack.Core.Exceptions
 {
     /// <summary>
     /// The exception that is thrown when the server enters an error state during a
-    /// call to <see cref="O:IComputeProvider.WaitForServerState"/> or <see cref="O:IComputeProvider.WaitForImageState"/>.
+    /// call to <see cref="O:IComputeProvider.WaitForServerState"/>.
     /// </summary>
     [Serializable]
     public class ServerEnteredErrorStateException : Exception
     {
         /// <summary>
-        /// The state of the server or image.
+        /// The state of the server.
         /// </summary>
         /// <seealso cref="ServerState"/>
-        /// <seealso cref="ImageState"/>
-        public string Status
+        public ServerState Status
         {
             get;
             private set;
@@ -28,8 +27,8 @@ namespace net.openstack.Core.Exceptions
         /// Initializes a new instance of the <see cref="ServerEnteredErrorStateException"/> class
         /// with the specified error state.
         /// </summary>
-        /// <param name="status">The error state entered by the server or image.</param>
-        public ServerEnteredErrorStateException(string status)
+        /// <param name="status">The error state entered by the server.</param>
+        public ServerEnteredErrorStateException(ServerState status)
             : base(string.Format("The server entered an error state: '{0}'", status))
         {
             Status = status;
@@ -48,7 +47,7 @@ namespace net.openstack.Core.Exceptions
             if (info == null)
                 throw new ArgumentNullException("info");
 
-            Status = (string)info.GetValue("Status", typeof(string));
+            Status = ServerState.FromName((string)info.GetValue("Status", typeof(string)));
         }
 
         /// <inheritdoc/>
@@ -59,7 +58,7 @@ namespace net.openstack.Core.Exceptions
                 throw new ArgumentNullException("info");
 
             base.GetObjectData(info, context);
-            info.AddValue("Status", Status);
+            info.AddValue("Status", Status.Name);
         }
     }
 }

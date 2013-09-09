@@ -1,14 +1,22 @@
-using System.Runtime.Serialization;
-
 namespace net.openstack.Core.Domain
 {
-    [DataContract]
+    using System.Net;
+    using net.openstack.Core.Domain.Converters;
+    using Newtonsoft.Json;
+
+    [JsonObject(MemberSerialization.OptIn)]
     public class Network
     {
-        [DataMember]
-        public string Id { get; set; }
+        [JsonProperty("id")]
+        public string Id { get; private set; }
 
-        [DataMember(Name = "ip")]
-        public AddressDetails[] Addresses { get; set; }
+        [JsonProperty("ip", ItemConverterType = typeof(IPAddressDetailsConverter))]
+        public IPAddress[] Addresses { get; private set; }
+
+        public Network(string id, IPAddress[] addresses)
+        {
+            Id = id;
+            Addresses = addresses;
+        }
     }
 }
